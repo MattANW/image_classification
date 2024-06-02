@@ -5,7 +5,9 @@ import numpy as np
 from torch import optim, nn
 from model import SimpleCNN
 from typing import Tuple
+from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
+import cv2
 
 def get_folders(source_dir: str) -> list[str]:
     """ Returns list of folders in the source directory """
@@ -32,20 +34,28 @@ def inverse_list(json_dir: str, listX: list[str]) -> list[int]:
     dictionary = get_dict(json_dir)
     return [dictionary.get(label, 0) for label in listX]
 
-def load_and_resize_image(source_dir: str, image_dir: str, resize: Tuple[int, int]) -> Image:
+def load_and_resize_image(source_dir: str, image_dir: str, resize: Tuple[int, int]):
     """ Returns resized image """
-    
-    return Image.open(source_dir + "/" + image_dir).resize(resize)
+    image_path = source_dir + '/' + image_dir
+    image = cv2.imread(image_path)
+    image = cv2.resize(image, resize)
+    return image
 
 def load_images(source_dir: str, resize: Tuple[int, int]) -> list:
     """ Returns np_list of images from the source directory with a given size """
     
     source = os.listdir(source_dir)
     images = []
-    for image in source:
+    def process_image(image):
         img = load_and_resize_image(source_dir, image, resize)
-        images.append(img)
-        
+        return img
+    
+    with ThreadPoolExecutor() as executor:
+        images = list(executor.map(process_image, source))
+    
+    # Filter out any None images that failed to load
+    images = [img for img in images if img is not None]
+    
     return images
 
 def create_array(source_dir: str, resize: Tuple[int, int]) -> list:
@@ -97,7 +107,6 @@ def create_features_and_labels(source_dir: str, json_dir: str, resize: Tuple[int
             labels.append(folders[idx])
     
     labels = inverse_list(json_dir, labels)
-    features = np.array(features).astype(np.float32)
     
     labels = torch.tensor(labels, dtype=torch.long)
     features = torch.tensor(features, dtype=torch.float32).permute(0, 3, 1, 2)
@@ -135,11 +144,11 @@ _learning_rate = 3e-7
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 epochs = 100
-batch_size = 8
+batch_size = 28
 num_classes = get_dict_len(_json_directory)
 
 if __name__ == '__main__':
-    add_to_dict(_images_folder, _json_directory, get_dict_len(_json_directory))
+    #add_to_dict(_images_folder, _json_directory, get_dict_len(_json_directory))
     features, labels = create_features_and_labels(_images_folder, _json_directory, image_size)
     
     model = SimpleCNN(_input_size, num_classes).to(device)
@@ -171,5 +180,5 @@ if __name__ == '__main__':
             print(f"Epoch: {epoch}, Step: {step}, Loss: {loss.detach()}, Accuracy: {accuracy}")
         
         if epoch % 10 == 0:
-            print(classify_image(model, 'images\chimpamzee/andrey-tikhonovskiy-QQj9477Apog-unsplash.jpg', _json_directory, image_size, device))
+            print(classify_image(model, 'images/beer-mug/010_0001.jpg', _json_directory, image_size, device))
             
