@@ -108,8 +108,8 @@ def create_features_and_labels(source_dir: str, json_dir: str, resize: Tuple[int
     
     labels = inverse_list(json_dir, labels)
     
-    labels = torch.tensor(labels, dtype=torch.long)
-    features = torch.tensor(features, dtype=torch.float32).permute(0, 3, 1, 2)
+    labels = torch.tensor(labels, dtype=torch.long, device=device)
+    features = torch.tensor(features, dtype=torch.float32, device=device).permute(0, 3, 1, 2)
     
     return features, labels
 
