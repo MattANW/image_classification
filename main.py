@@ -174,19 +174,25 @@ num_classes = get_dict_len(_json_directory)
 
 if __name__ == '__main__':
     #add_to_dict(_images_folder, _json_directory, get_dict_len(_json_directory))
-    
+    features, labels = create_features_and_labels(_images_folder, _json_directory, image_size)
     model = SimpleCNN(_input_size, num_classes).to(device)
     opt = optim.Adam(model.parameters(), lr=_learning_rate)
     criterion = nn.CrossEntropyLoss()
     
     epochs = epochs
     batch_size = batch_size
+    steps = features.shape[0] // batch_size
     
     for epoch in range(epochs):
-        for step, batch in enumerate(generate_features_and_labels(_images_folder, _json_directory, batch_size, image_size=image_size)):
+        perm = torch.randperm(features.shape[0])
+        train_features, train_labels = features[perm], labels[perm]
+        #for step, batch in enumerate(generate_features_and_labels(_images_folder, _json_directory, batch_size, image_size=image_size)):
+        for step in range(steps):
             opt.zero_grad()
+            batch_features = train_features[step * batch_size:(step+1) * batch_size].to(device)
+            batch_labels = train_labels[step * batch_size:(step+1) * batch_size].to(device)
             
-            batch_features, batch_labels = batch
+            #batch_features, batch_labels = batch
             
             output = model(batch_features)
             
@@ -200,5 +206,5 @@ if __name__ == '__main__':
             print(f"Epoch: {epoch}, Step: {step}, Loss: {loss.detach()}, Accuracy: {accuracy}")
         
         if epoch % 10 == 0:
-            print(classify_image(model, 'images/beer-mug/010_0001.jpg', _json_directory, image_size, device))
+            print(classify_image(model, 'old_images/chimpamzee/andrey-tikhonovskiy-QQj9477Apog-unsplash.jpg', _json_directory, image_size, device))
             
