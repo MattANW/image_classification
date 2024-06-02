@@ -8,22 +8,18 @@ from typing import Tuple
 from PIL import Image
 
 def get_folders(source_dir: str) -> list[str]:
-    """
-    Returns list of folders in the source directory
-    """
+    """ Returns list of folders in the source directory """
     return os.listdir(source_dir)
 
-def get_dict(json_dir: str) -> dict:
-    """
-    Returns dictionary of given json file
-    """
+def get_dict(json_dir: str) -> dict[str, int]:
+    """ Returns dictionary of given json file """
+    
     with open(json_dir, 'r') as source:
         return json.load(source)
 
 def get_dict_len(json_dir: str) -> int:
-    """
-    Returns length of dictionary in json file
-    """
+    """ Returns length of dictionary in json file """
+    
     with open(json_dir, 'r') as source:
         try:
             return len(json.load(source))
@@ -31,19 +27,19 @@ def get_dict_len(json_dir: str) -> int:
             return 0
         
 def inverse_list(json_dir: str, listX: list[str]) -> list[int]:
-    """
-    Returns list of inversed values from given list
-    """
+    """ Returns list of inversed values from given list """
+    
     dictionary = get_dict(json_dir)
     return [dictionary.get(label, 0) for label in listX]
 
-def load_and_resize_image(source_dir: str, image_dir: str, resize: Tuple) -> Image:
+def load_and_resize_image(source_dir: str, image_dir: str, resize: Tuple[int, int]) -> Image:
+    """ Returns resized image """
+    
     return Image.open(source_dir + "/" + image_dir).resize(resize)
 
-def load_images(source_dir: str, resize: Tuple) -> list:
-    """
-    Returns np_list of images from the source directory with a given size
-    """
+def load_images(source_dir: str, resize: Tuple[int, int]) -> list:
+    """ Returns np_list of images from the source directory with a given size """
+    
     source = os.listdir(source_dir)
     images = []
     for image in source:
@@ -52,10 +48,9 @@ def load_images(source_dir: str, resize: Tuple) -> list:
         
     return images
 
-def create_array(source_dir: str, resize: Tuple) -> list:
-    """
-    Returns a list with each image without bounds
-    """
+def create_array(source_dir: str, resize: Tuple[int, int]) -> list:
+    """ Returns a list with each image without bounds """
+    
     final_list = []
     folders = get_folders(source_dir)
     
@@ -66,9 +61,8 @@ def create_array(source_dir: str, resize: Tuple) -> list:
     return final_list
 
 def add_to_dict(source_dir: str, json_dir: str, x: int = 0):
-    """
-    Checks for new classes and adds new ones to the dictionary
-    """
+    """ Checks for new classes and adds new ones to the dictionary """
+    
     folders = get_folders(source_dir)
     
     if os.path.exists(json_dir):
@@ -88,10 +82,9 @@ def add_to_dict(source_dir: str, json_dir: str, x: int = 0):
     with open(json_dir, "w") as writer:
         json.dump(existing_dict, writer)
 
-def create_features_and_labels(source_dir: str, json_dir: str, resize: Tuple) -> Tuple:
-    """
-    Returns tuple: features and labels for given source directory and dictionary (json directory) 
-    """
+def create_features_and_labels(source_dir: str, json_dir: str, resize: Tuple[int, int]) -> Tuple:
+    """ Returns tuple: features and labels for given source directory and dictionary (json directory) """
+    
     image_list = create_array(source_dir, resize)
     folders = get_folders(source_dir)
     
@@ -111,10 +104,9 @@ def create_features_and_labels(source_dir: str, json_dir: str, resize: Tuple) ->
     
     return features, labels
 
-def classify_image(model: nn.Module, image_path: str, json_dir: str, resize: Tuple, device: str) -> str:
-    """
-    Classifies a single image and returns the predicted class label.
-    """
+def classify_image(model: nn.Module, image_path: str, json_dir: str, resize: Tuple[int, int], device: str) -> str:
+    """ Classifies a single image and returns the predicted class label. """
+    
     image = Image.open(image_path)
     image = image.resize(resize)
     image = np.array(image).astype(np.float32)
@@ -131,9 +123,8 @@ def classify_image(model: nn.Module, image_path: str, json_dir: str, resize: Tup
     return predicted_label
 
 def save_model(model, path: str):
-    """
-    Saves the model to the specified path.
-    """
+    """ Saves the model to the specified path. """
+    
     torch.save(model.state_dict(), path)
 
 image_size = (512, 512)
