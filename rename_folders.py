@@ -1,4 +1,5 @@
 import os
+import stat
 
 def rename_files(directory):
     items = os.listdir(directory)

@@ -2,10 +2,11 @@ import os
 import json
 import torch
 import numpy as np
-from torch import optim, nn
+from torch import Tensor, optim, nn
 from model import SimpleCNN
-from typing import Tuple
+from typing import Iterator, List, Tuple
 from concurrent.futures import ThreadPoolExecutor
+import random
 from PIL import Image
 import cv2
 
@@ -108,10 +109,34 @@ def create_features_and_labels(source_dir: str, json_dir: str, resize: Tuple[int
     
     labels = inverse_list(json_dir, labels)
     
+    
     labels = torch.tensor(labels, dtype=torch.long, device=device)
     features = torch.tensor(features, dtype=torch.float32, device=device).permute(0, 3, 1, 2)
     
     return features, labels
+
+def generate_features_and_labels(features_dir: str, labels_dir: str, batch_size: int, image_size: Tuple[int, int] = (512, 512), shuffle_index: bool = True) -> Iterator[Tuple[Tensor, Tensor]]:
+    labels_dict: dict[str, int] = get_dict(labels_dir)
+    
+    index: List[Tuple[str, str]] = []
+    for folder in os.listdir(features_dir):
+        label = labels_dict[folder]
+        index.extend([(os.path.join(folder, image_path), label) for image_path in os.listdir(os.path.join(features_dir, folder))])
+    
+    if shuffle_index:
+        random.shuffle(index)
+    
+    num_batches = len(index) // batch_size
+    for batch_num in range(num_batches):
+        feature_paths, labels = zip(*index[batch_num*batch_size:(batch_num+1)*batch_size])
+        features = [load_and_resize_image(features_dir, path, image_size) for path in feature_paths]
+        
+        yield torch.tensor(features, dtype=torch.float32, device=device).permute(0, 3, 1, 2), torch.tensor(labels, dtype=torch.long, device=device)
+        
+    feature_paths, labels = zip(*index[num_batches*batch_size:])
+    features = [load_and_resize_image(os.path.join(features_dir, path) for path in feature_paths)]
+        
+    yield  torch.tensor(features, dtype=torch.float32, device=device).permute(0, 3, 1, 2), torch.tensor(labels, dtype=torch.long, device=device)
 
 def classify_image(model: nn.Module, image_path: str, json_dir: str, resize: Tuple[int, int], device: str) -> str:
     """ Classifies a single image and returns the predicted class label. """
@@ -136,11 +161,11 @@ def save_model(model, path: str):
     
     torch.save(model.state_dict(), path)
 
-image_size = (512, 512)
-_images_folder = 'images'
+image_size = (256, 256)
+_images_folder = 'old_images'
 _json_directory = 'labels.json'
 _input_size = 3
-_learning_rate = 3e-7
+_learning_rate = 3e-6
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 epochs = 100
@@ -149,7 +174,6 @@ num_classes = get_dict_len(_json_directory)
 
 if __name__ == '__main__':
     #add_to_dict(_images_folder, _json_directory, get_dict_len(_json_directory))
-    features, labels = create_features_and_labels(_images_folder, _json_directory, image_size)
     
     model = SimpleCNN(_input_size, num_classes).to(device)
     opt = optim.Adam(model.parameters(), lr=_learning_rate)
@@ -157,16 +181,12 @@ if __name__ == '__main__':
     
     epochs = epochs
     batch_size = batch_size
-    steps = features.shape[0] // batch_size
     
     for epoch in range(epochs):
-        perm = torch.randperm(features.shape[0])
-        train_features, train_labels = features[perm], labels[perm]
-        
-        for step in range(steps):
+        for step, batch in enumerate(generate_features_and_labels(_images_folder, _json_directory, batch_size, image_size=image_size)):
             opt.zero_grad()
-            batch_features = train_features[step * batch_size:(step+1) * batch_size].to(device)
-            batch_labels = train_labels[step * batch_size:(step+1) * batch_size].to(device)
+            
+            batch_features, batch_labels = batch
             
             output = model(batch_features)
             
