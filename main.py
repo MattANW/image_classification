@@ -37,6 +37,9 @@ def inverse_list(json_dir: str, listX: list[str]) -> list[int]:
     dictionary = get_dict(json_dir)
     return [dictionary.get(label, 0) for label in listX]
 
+def load_and_resize_image(source_dir: str, image_dir: str, resize: Tuple) -> Image:
+    return Image.open(source_dir + "/" + image_dir).resize(resize)
+
 def load_images(source_dir: str, resize: Tuple) -> list:
     """
     Returns np_list of images from the source directory with a given size
@@ -44,8 +47,7 @@ def load_images(source_dir: str, resize: Tuple) -> list:
     source = os.listdir(source_dir)
     images = []
     for image in source:
-        img = Image.open(source_dir + "/" + image)
-        img = img.resize(resize)
+        img = load_and_resize_image(source_dir, image, resize)
         images.append(img)
         
     return images
@@ -145,9 +147,8 @@ epochs = 100
 batch_size = 8
 num_classes = get_dict_len(_json_directory)
 
-add_to_dict(_images_folder, _json_directory, get_dict_len(_json_directory))
-
 if __name__ == '__main__':
+    add_to_dict(_images_folder, _json_directory, get_dict_len(_json_directory))
     features, labels = create_features_and_labels(_images_folder, _json_directory, image_size)
     
     model = SimpleCNN(_input_size, num_classes).to(device)
@@ -179,5 +180,5 @@ if __name__ == '__main__':
             print(f"Epoch: {epoch}, Step: {step}, Loss: {loss.detach()}, Accuracy: {accuracy}")
         
         if epoch % 10 == 0:
-            print(classify_image(model, 'images/rat/aleksandr-gusev-rNDjtoR_VRM-unsplash.jpg', _json_directory, image_size, device))
+            print(classify_image(model, 'images\chimpamzee/andrey-tikhonovskiy-QQj9477Apog-unsplash.jpg', _json_directory, image_size, device))
             
